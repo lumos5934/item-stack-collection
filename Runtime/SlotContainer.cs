@@ -1,148 +1,240 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace LLib
 {
-    public class SlotContainer<TItem, TKey> where TItem : IItem<TKey>
+    public enum SlotLayout
     {
-        public enum SlotLayout
-        {
-            Fixed,
-            Compact
-        }
+        Fixed,
+        Compact
+    }
 
-        private readonly List<ItemStack<TItem>> _slots;
+
+    public class SlotContainer<TIItem, TKey> where TIItem : IItem<TKey>
+    {
+        public readonly SlotLayout Layout;
+        
+        private readonly List<ItemSlot<TIItem>> _slots;
         private readonly int _capacity;
-        private readonly HashSet<int> _dirty = new();
 
-        protected readonly SlotLayout _layout;
+        private readonly Dictionary<int, ItemSlot<TIItem>> _changedSlots = new();
 
-        public IReadOnlyList<ItemStack<TItem>> Slots => _slots;
-        public bool IsUnlimited => _capacity < 0;
+        public IReadOnlyList<ItemSlot<TIItem>> Slots => _slots;
+
         public int Capacity => _capacity;
-        public int Count => _slots.Count;
+        public int UsedSlotCount { get; private set; }
+        public int EmptySlotCount => _capacity < 0 ? 0 : _capacity - UsedSlotCount;
+        public bool IsEmpty => UsedSlotCount == 0;
+        public bool IsFull => _capacity >= 0 && UsedSlotCount >= _capacity;
+        public bool HasEmptySlot => _capacity < 0 || UsedSlotCount < _capacity;
+
+        public event Action<IReadOnlyDictionary<int, ItemSlot<TIItem>>> SlotsChanged;
+        
 
         public SlotContainer(SlotLayout layout, int capacity = -1)
         {
-            _layout = layout;
+            Layout = layout;
             _capacity = capacity;
-            _slots = new List<ItemStack<TItem>>();
 
-            if (!IsUnlimited)
+            _slots = new List<ItemSlot<TIItem>>();
+
+            if (_capacity >= 0)
             {
-                for (int i = 0; i < capacity; i++)
+                for (int i = 0; i < _capacity; i++)
                 {
                     _slots.Add(CreateSlot());
                 }
             }
         }
 
-        protected virtual ItemStack<TItem> CreateSlot()
+
+        protected virtual ItemSlot<TIItem> CreateSlot()
         {
-            return new ItemStack<TItem>();
+            return new ItemSlot<TIItem>();
         }
 
-        public ItemStack<TItem> GetSlot(int index)
+        public ItemSlot<TIItem> GetSlot(int index)
         {
             return _slots[index];
         }
 
-        public virtual int Add(TItem item, int amount)
+        public int Add(TIItem item, int amount)
         {
-            return OnAdd(item, amount);
+            BeginChange();
+
+            int result = OnAdd(item, amount);
+
+            InvokeChanged();
+
+            return result;
         }
 
-        public virtual int RemoveAt(int index, int amount)
+        public int Add(IReadOnlyList<(TIItem item, int amount)> items)
         {
-            return OnRemoveAt(index, amount);
+            BeginChange();
+
+            int total = 0;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                total += OnAdd(
+                    items[i].item,
+                    items[i].amount);
+            }
+
+            InvokeChanged();
+
+            return total;
+        }
+
+        public int RemoveAt(int index, int amount)
+        {
+            BeginChange();
+
+            int result = OnRemoveAt(index, amount);
+
+            InvokeChanged();
+
+            return result;
+        }
+        
+        public int RemoveAt(IReadOnlyList<(int index, int amount)> removes)
+        {
+            BeginChange();
+
+            int total = 0;
+
+            for (int i = 0; i < removes.Count; i++)
+            {
+                total += OnRemoveAt(
+                    removes[i].index,
+                    removes[i].amount);
+            }
+
+            InvokeChanged();
+
+            return total;
         }
 
         public void Clear()
         {
+            BeginChange();
+
             for (int i = 0; i < _slots.Count; i++)
             {
-                _slots[i].Clear();
-                _dirty.Add(i);
-                OnSlotChanged(i, _slots[i]);
+                var slot = _slots[i];
+
+                if (!slot.IsEmpty)
+                {
+                    UsedSlotCount--;
+                }
+
+                slot.Clear();
+
+                MarkChanged(i);
             }
-        }
 
-        public int[] ConsumeDirty()
+
+            UsedSlotCount = 0;
+
+            InvokeChanged();
+        }
+        
+        private void BeginChange()
         {
-            var arr = _dirty.ToArray();
-            _dirty.Clear();
-            return arr;
+            _changedSlots.Clear();
         }
 
-        protected virtual int OnAdd(TItem item, int amount)
+        private void MarkChanged(int index)
+        {
+            _changedSlots[index] = _slots[index];
+        }
+
+        private void InvokeChanged()
+        {
+            if (_changedSlots.Count == 0)
+                return;
+
+            SlotsChanged?.Invoke(_changedSlots);
+
+            _changedSlots.Clear();
+        }
+
+        protected virtual int OnAdd(TIItem item, int amount)
         {
             int remaining = amount;
 
+            // 기존 슬롯 스택 증가
             for (int i = 0; i < _slots.Count; i++)
             {
                 if (remaining <= 0)
                     break;
-
+                
                 var slot = _slots[i];
-
+                
                 if (!slot.IsEmpty && IsSameItem(slot.Item, item))
                 {
-                    int canAdd = Math.Min(
-                        remaining,
-                        slot.Item.MaxStack - slot.Count
-                    );
-
+                    int canAdd = Math.Min(remaining, slot.Item.MaxStack - slot.Count);
                     if (canAdd > 0)
                     {
                         slot.Add(canAdd);
+
                         remaining -= canAdd;
 
-                        _dirty.Add(i);
-                        OnSlotChanged(i, slot);
+                        MarkChanged(i);
                     }
                 }
             }
 
-            if (_layout == SlotLayout.Fixed)
+            // Fixed 슬롯
+            if (Layout == SlotLayout.Fixed)
             {
                 for (int i = 0; i < _slots.Count; i++)
                 {
                     if (remaining <= 0)
                         break;
-
+                    
                     var slot = _slots[i];
-
+                    
                     if (slot.IsEmpty)
                     {
-                        int canAdd = Math.Min(remaining, item.MaxStack);
+                        int canAdd = Math.Min(
+                            remaining,
+                            item.MaxStack);
+
+
                         slot.Set(item, canAdd);
+
                         remaining -= canAdd;
 
-                        _dirty.Add(i);
-                        OnSlotChanged(i, slot);
+                        UsedSlotCount++;
+
+                        MarkChanged(i);
                     }
                 }
             }
 
-            if (_layout == SlotLayout.Compact || IsUnlimited)
+            // Compact 슬롯 생성
+            if (Layout == SlotLayout.Compact || _capacity < 0)
             {
                 while (remaining > 0)
                 {
-                    var newSlot = CreateSlot();
-
+                    if (_capacity >= 0 && _slots.Count >= _capacity)
+                        break;
+                    
+                    var slot = CreateSlot();
+                    
                     int canAdd = Math.Min(remaining, item.MaxStack);
-                    newSlot.Set(item, canAdd);
+                    
+                    slot.Set(item, canAdd);
+                    
+                    _slots.Add(slot);
 
-                    _slots.Add(newSlot);
                     remaining -= canAdd;
 
-                    int index = _slots.Count - 1;
-                    _dirty.Add(index);
-                    OnSlotChanged(index, newSlot);
-
-                    if (!IsUnlimited && _slots.Count >= _capacity)
-                        break;
+                    UsedSlotCount++;
+                    
+                    MarkChanged(_slots.Count - 1);
                 }
             }
 
@@ -152,34 +244,36 @@ namespace LLib
         protected virtual int OnRemoveAt(int index, int amount)
         {
             var slot = _slots[index];
-
             if (slot.IsEmpty)
                 return 0;
 
             int removed = slot.Remove(amount);
 
-            _dirty.Add(index);
-            OnSlotChanged(index, slot);
+            if (slot.IsEmpty)
+            {
+                UsedSlotCount--;
+            }
 
-            if (_layout == SlotLayout.Compact && slot.IsEmpty)
+            MarkChanged(index);
+
+            if (Layout == SlotLayout.Compact && slot.IsEmpty)
             {
                 _slots.RemoveAt(index);
-
+                
                 for (int i = index; i < _slots.Count; i++)
                 {
-                    _dirty.Add(i);
-                    OnSlotChanged(i, _slots[i]);
+                    MarkChanged(i);
                 }
             }
 
             return removed;
         }
 
-        protected virtual bool IsSameItem(TItem a, TItem b)
+        protected virtual bool IsSameItem(TIItem a, TIItem b)
         {
-            return EqualityComparer<TKey>.Default.Equals(a.Key, b.Key);
+            return EqualityComparer<TKey>.Default.Equals(
+                a.Key,
+                b.Key);
         }
-
-        protected virtual void OnSlotChanged(int index, ItemStack<TItem> slot) { }
     }
 }

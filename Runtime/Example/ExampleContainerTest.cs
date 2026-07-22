@@ -26,7 +26,7 @@ namespace LLib
             if (container != null)
                 return;
         
-            container = new ExampleContainer(SlotContainer<ExampleItem, string>.SlotLayout.Fixed, 5);
+            container = new ExampleContainer(SlotLayout.Fixed, 5);
         }
     
         public void Add()

@@ -10,7 +10,7 @@ namespace LLib
         {
         }
 
-        protected override void OnSlotChanged(int index, ItemStack<ExampleItem> slot)
+        /*protected override void OnSlotChanged(int index, ItemStack<ExampleItem> slot)
         {
             if (slot.IsEmpty)
             {
@@ -29,7 +29,7 @@ namespace LLib
             {
                 list.Add(index);
             }
-        }
+        }*/
 
         public List<int> FindSlots(string key)
         {
@@ -39,7 +39,7 @@ namespace LLib
             return new List<int>();
         }
 
-        public ItemStack<ExampleItem> FindFirst(string key)
+        public ItemSlot<ExampleItem> FindFirst(string key)
         {
             var slots = FindSlots(key);
 
@@ -53,7 +53,7 @@ namespace LLib
         {
             _index.Clear();
 
-            for (int i = 0; i < Count; i++)
+            for (int i = 0; i < Slots.Count; i++)
             {
                 var slot = GetSlot(i);
 

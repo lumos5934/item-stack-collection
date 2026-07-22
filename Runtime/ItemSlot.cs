@@ -1,10 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace LLib
 {
-    public class ItemStack<TItem>
+    public class ItemSlot<TItem>
     {
         public TItem Item { get; private set; }
         public int Count { get; private set; }
@@ -12,18 +8,18 @@ namespace LLib
         public bool IsEmpty => Item == null || Count <= 0;
 
         
-        public void Set(TItem item, int count)
+        internal void Set(TItem item, int count)
         {
             Item = item;
             Count = count;
         }
 
-        public void Add(int amount)
+        internal void Add(int amount)
         {
             Count += amount;
         }
 
-        public int Remove(int amount)
+        internal int Remove(int amount)
         {
             int removed = System.Math.Min(amount, Count);
             Count -= removed;
@@ -34,7 +30,7 @@ namespace LLib
             return removed;
         }
 
-        public void Clear()
+        internal void Clear()
         {
             Item = default;
             Count = 0;
