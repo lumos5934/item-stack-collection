@@ -6,7 +6,7 @@ namespace LLib.Inventory
     {
         public int MaxCapacity { get; private set; }
         public int CurCapacity { get; private set; }
-
+        
         public FixedInventory(int capacity)
         {
             MaxCapacity = capacity;
@@ -121,6 +121,16 @@ namespace LLib.Inventory
             }
 
             return remaining;
+        }
+
+     
+        public override void Clear()
+        {
+            for (var i = 0; i < _slots.Count; i++)
+            {
+                _slots[i].Clear();
+                RaiseSlotChanged(i);
+            }
         }
 
         public bool Swap(int indexA, int indexB)

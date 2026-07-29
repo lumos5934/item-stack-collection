@@ -28,6 +28,7 @@ namespace LLib.Inventory
 
         public abstract int Add(TItem item, int count);
         public abstract int Remove(TItem item, int count);
+        public abstract void Clear();
 
         public int Add(ItemStack<TItem> stack)
         {

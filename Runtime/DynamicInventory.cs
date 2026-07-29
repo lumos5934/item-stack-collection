@@ -97,5 +97,16 @@ namespace LLib.Inventory
         {
             return true;
         }
+        
+        public override void Clear()
+        {
+            var removedCount = _slots.Count;
+            _slots.Clear();
+
+            for (var i = removedCount - 1; i >= 0; i--)
+            {
+                RaiseSlotChanged(i);
+            }
+        }
     }
 }
