@@ -1,9 +1,9 @@
-
 namespace LLib
 {
-    public interface IItem<TKey>
+    public interface IItem
     {
-        TKey Key { get; }
-        int MaxStack { get; }
+        string Key { get; }
+
+        int MaxStackCount { get; }
     }
 }

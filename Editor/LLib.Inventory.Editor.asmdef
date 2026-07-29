@@ -1,0 +1,16 @@
+{
+    "name": "LLib.Inventory.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:95dc96e728751684582e5a1b28723f34"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
