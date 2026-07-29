@@ -1,110 +1,170 @@
-# Slot Container
-Slot 기반 데이터 컨테이너로,  `Fixed` / `Compact` 레이아웃을 지원하며  슬롯 단위로 아이템을 스택 형태로 저장하고 관리할 수 있으며 
-인벤토리, 장비 슬롯, 아이템 보관함 등  “슬롯 + 스택 구조”가 필요한 모든 시스템에 사용할 수 있도록 설계되었습니다.
+# Inventory System
 
-<br>
-아직 지속적인 프로젝트 사용 테스트가 필요합니다. <br>
+아이템 스택과 그것을 담는 인벤토리를 관리합니다. UI는 포함하지 않으며, 아이템 스택 데이터와 추가/제거/스왑/조회 같은 핵심 로직만 제공합니다. 빈 슬롯을 허용하는 슬롯형(FixedInventory)과 빈 슬롯 없이 항상 압축된 상태를 유지하는 압축형(DynamicInventory)을 상황에 맞게 선택해서 사용할 수 있습니다.
 
-<br>
-
-[Usage](#usage) <br>
-[API](#api)
-
-<br>
-<br>
-<br>
-
-
-## 🎞️Example
-`Runtime/Exapmle`폴더에 용도에 맞게 상속이 필요한 경우, 예시 스크립트와 프리팹이 준비되어 있습니다. <br>
-<img width="333" height="740" alt="컨테이너 example" src="https://github.com/user-attachments/assets/958f5f85-f784-41c9-b957-c3b2f9196c3e" /> <br>
+[ Usage ](#usage) <br>
+[ API ](#api) <br>
 
 
 <br>
 <br>
 <br>
 
-## 🔧 Usage
 
-`SlotContainer`는 Item + Stack 구조를 기반으로 동작하며,  
-`ExampleContainer`처럼 상속하여 조회/캐싱 기능을 확장할 수 있습니다.
+## 🔧Usage
 
 <br>
 
 #### Item 정의
+`IItem`을 구현해 아이템의 정체성(`Id`)과 최대 스택 수(`MaxStackCount`)를 정의합니다.
 
-```csharp
-public class ExampleItem : IItem<string>
+```cs
+
+public class WeaponItem : IItem
 {
-    public string Key { get; }
-    public string Name { get; }
-    public int MaxStack { get; }
+    public string Id { get; private set; }
+    public int MaxStackCount { get; private set; }
 
-    public ExampleItem(string key, string name, int maxStack)
+    public WeaponItem(string id, int maxStackCount)
     {
-        Key = key;
-        Name = name;
-        MaxStack = maxStack;
+        Id = id;
+        MaxStackCount = maxStackCount;
     }
 }
+
 ```
 
 <br>
 <br>
 
-#### Container 생성
+#### FixedInventory 사용
+슬롯 개수가 고정되고 빈 슬롯이 존재하는 인벤토리입니다. (플레이어 인벤토리, 장비창 등)
+
 ```cs
-var container = new SlotContainer(
-    SlotContainer<ExampleItem, string>.SlotLayout.Fixed,
-    capacity: 10
-);
 
-// capacity = -1 > 용량 제한 없음. 
+var inventory = new FixedInventory<WeaponItem>(20);
+
+var leftover = inventory.Add(sword, 1);
+inventory.Remove(sword, 1);
+inventory.Swap(0, 3);
+
+// 슬롯 개수 축소 (예: 디버프로 인벤토리 칸 잠금)
+inventory.SetCurCapacity(15);
+
 ```
 
 <br>
 <br>
 
-#### 아이템 관리
+#### DynamicInventory 사용
+빈 슬롯 없이 항상 압축된 상태를 유지하는 인벤토리입니다. (창고, 우편함 등 정렬만 필요한 경우)
+
 ```cs
-//추가
-var potion = new ExampleItem("potion", "Health Potion", 10);
-container.Add(potion, 15);
 
-//제거
-container.RemoveAt(index: 0, amount: 3);
+var inventory = new DynamicInventory<WeaponItem>();
 
-//초기화
-container.Clear();
+inventory.Add(sword, 1);
+inventory.Remove(sword, 1);
+
+// 특정 위치로 재배치
+inventory.Insert(0, new ItemStack<WeaponItem>(sword, 1));
+
+```
+
+<br>
+<br>
+
+#### 슬롯 변경 감지
+`OnSlotChanged(index)`로 변경된 슬롯 인덱스를 통지받습니다. 어떤 종류의 변경인지는 알려주지 않으므로, 구독 측에서 `Slots[index]`를 다시 읽어 판단합니다.
+
+```cs
+
+inventory.OnSlotChanged += (index) =>
+{
+    var slot = inventory.Slots[index];
+    if (slot.IsEmpty)
+    {
+        // 슬롯 비워짐
+    }
+};
+
+```
+
+<br>
+<br>
+
+#### 프로젝트별 규칙 추가
+`CanAdd`, `CanRemove`(base), `CanSwap`(Fixed), `CanInsert`(Dynamic) 훅을 override해 무게 제한, 타입 제한, 슬롯 잠금 같은 규칙을 얹을 수 있습니다.
+
+```cs
+
+public class PlayerInventory : FixedInventory<WeaponItem>
+{
+    public PlayerInventory(int capacity) : base(capacity)
+    {
+    }
+
+    protected override bool CanAdd(WeaponItem item, int count)
+    {
+        if (item.Id == "quest_only")
+        {
+            return false;
+        }
+
+        return true;
+    }
+}
+
 ```
 
 <br>
 <br>
 <br>
+
 
 ## 📖API
-#### SlotContainer
-**`Add(item, amount)`** : 아이템을 슬롯에 추가합니다, 실제로 추가된 수량을 반환합니다.<br>
-**`RemoveAt(index, amount)`** : 지정된 슬롯 인덱스에서 아이템을 제거합니다, 실제로 제거된 수량을 반환합니다. <br>
-**`GetSlot(index)`** : 슬롯 인덱스를 통해 해당 슬롯을 반환합니다. <br>
-**`Clear()`** : 모든 슬롯을 초기화합니다. <br>
-**`ConsumeDirty()`** : 변경된 슬롯 인덱스를 반환하고 dirty 상태를 초기화합니다. (UI/ 동기화용) <br>
-**`IsSameItem(a,b)`** : 아이템 동일성을 비교합니다. 기본 구현은 Key 기반 비교입니다. <br>
-**`OnSlotChanged(index, slot)`** : 슬롯 변경 시 호출되는 확장 훅입니다. 상속해서 UI / Indexing / Cache 갱신 등에 사용합니다. <br>
+
+#### IItem
+**`Id`** : 아이템 정체성을 나타내는 고유 문자열입니다.<br>
+**`MaxStackCount`** : 한 슬롯에 쌓일 수 있는 최대 수량입니다.<br>
 
 <br>
 
-#### SlotLayout
-**`Fixed`** : 슬롯 개수 고정, 빈 슬롯 유지, 인덱스 구조 유지 <br>
-**`Compact`** : 빈 슬롯 제거, 슬롯 자동 압축, 동적 구조 <br>
+#### ItemStack\<TItem\>
+**`Item`** : 이 스택이 담고 있는 아이템입니다. 빈 슬롯이면 null입니다.<br>
+**`Count`** : 현재 수량입니다.<br>
+**`IsEmpty`** : 수량이 0 이하면 true를 반환합니다.<br>
+**`CanMerge(other)`** : 같은 아이템으로 병합 가능한지 여부를 반환합니다.<br>
+**`Fill(item, count)`** : 빈 슬롯을 새 아이템으로 채웁니다.<br>
+**`Clear()`** : 슬롯을 빈 상태로 되돌립니다.<br>
+**`AddCount(amount)`** : 수량을 더합니다. MaxStackCount를 초과해 담지 못한 나머지 수량을 반환합니다.<br>
+**`RemoveCount(amount)`** : 수량을 뺍니다. 실제로 제거된 수량을 반환합니다.<br>
 
 <br>
 
-#### ItemStack
-**`Item`** : 슬롯에 저장된 아이템 <br>
-**`Count`** : 현재 스택 수량 <br>
-**`IsEmpty`** : 슬롯이 비어있는지 여부 <br>
-**`Add(amount)`** : 슬롯에 수량 추가 <br>
-**`Remove(amount)`** : 슬롯에서 수량 제거 <br>
-**`Set(item, amount)`** : 슬롯에 아이템 및 수량 설정 <br>
-**`Clear()`** : 슬롯 초기화 <br>
+#### InventoryBase\<TItem\>
+**`Slots`** : 현재 슬롯 목록입니다. Find류 메서드 없이 이 목록을 직접 순회해서 사용합니다.<br>
+**`OnSlotChanged`** : 슬롯 인덱스가 변경될 때 호출되는 이벤트입니다.<br>
+**`Add(item, count)`** : 아이템을 추가합니다. 처리하지 못하고 남은 수량을 반환합니다.<br>
+**`Add(stack)`** : ItemStack을 그대로 추가합니다.<br>
+**`Remove(item, count)`** : 아이템을 제거합니다. 제거하지 못하고 남은 수량을 반환합니다.<br>
+**`Remove(stack)`** : ItemStack을 그대로 제거합니다.<br>
+
+<br>
+
+#### FixedInventory\<TItem\> : InventoryBase\<TItem\>
+**`Capacity`** : 배열의 물리적 크기입니다. 불변입니다.<br>
+**`MaxCapacity`** : Capacity 이하로 조정 가능한 사용 가능 상한입니다.<br>
+**`CurCapacity`** : MaxCapacity 이하로 조정 가능한 실사용 상한입니다. Add/Swap은 이 값을 기준으로 동작합니다.<br>
+**`SetMaxCapacity(value)`** : MaxCapacity를 설정합니다. CurCapacity가 이보다 크면 함께 낮춥니다.<br>
+**`SetCurCapacity(value)`** : CurCapacity를 설정합니다.<br>
+**`Swap(indexA, indexB)`** : 두 슬롯의 내용을 1:1로 교환합니다.<br>
+
+<br>
+
+#### DynamicInventory\<TItem\> : InventoryBase\<TItem\>
+**`Insert(index, stack)`** : 리스트 상 위치를 재배치합니다. 음수면 맨 앞, 최대 초과면 맨 뒤, 중간이면 밀어서 삽입합니다.<br>
+
+<br>
+<br>
+<br>
