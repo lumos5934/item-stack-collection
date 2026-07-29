@@ -4,22 +4,18 @@ namespace LLib.Inventory
 {
     public class FixedInventory<TItem> : InventoryBase<TItem> where TItem : class, IItem
     {
-        public int MaxCapacity { get; private set; }
-        public int CurCapacity { get; private set; }
-        
-        public FixedInventory(int capacity)
-        {
-            MaxCapacity = capacity;
-            CurCapacity = capacity;
+        public int Capacity { get; private set; }
 
-            _slots = new List<ItemStack<TItem>>(capacity);
-            for (var i = 0; i < capacity; i++)
+        public FixedInventory(int slotCount)
+        {
+            _slots = new List<ItemStack<TItem>>(slotCount);
+            for (var i = 0; i < slotCount; i++)
             {
                 _slots.Add(new ItemStack<TItem>(null, 0));
             }
         }
 
-        public void SetMaxCapacity(int value)
+        public void SetCapacity(int value)
         {
             if (value < 0)
             {
@@ -30,26 +26,7 @@ namespace LLib.Inventory
                 value = _slots.Count;
             }
 
-            MaxCapacity = value;
-
-            if (CurCapacity > MaxCapacity)
-            {
-                SetCurCapacity(MaxCapacity);
-            }
-        }
-
-        public void SetCurCapacity(int value)
-        {
-            if (value < 0)
-            {
-                value = 0;
-            }
-            if (value > MaxCapacity)
-            {
-                value = MaxCapacity;
-            }
-
-            CurCapacity = value;
+            Capacity = value;
         }
 
         public override int Add(TItem item, int count)
@@ -69,7 +46,7 @@ namespace LLib.Inventory
                 return 0;
             }
 
-            for (var i = 0; i < CurCapacity && remaining > 0; i++)
+            for (var i = 0; i < Capacity && remaining > 0; i++)
             {
                 var slot = _slots[i];
                 if (!slot.IsEmpty)
@@ -103,7 +80,7 @@ namespace LLib.Inventory
             }
 
             var remaining = count;
-            for (var i = 0; i < CurCapacity && remaining > 0; i++)
+            for (var i = 0; i < Capacity && remaining > 0; i++)
             {
                 var slot = _slots[i];
                 if (!slot.CanMerge(item))
@@ -123,7 +100,6 @@ namespace LLib.Inventory
             return remaining;
         }
 
-     
         public override void Clear()
         {
             for (var i = 0; i < _slots.Count; i++)
@@ -132,17 +108,14 @@ namespace LLib.Inventory
                 RaiseSlotChanged(i);
             }
         }
-
+        
         public bool Swap(int indexA, int indexB)
         {
-            if (indexA < 0 || indexA >= CurCapacity || indexB < 0 || indexB >= CurCapacity)
-            {
+            if (indexA < 0 || indexA >= Capacity || indexB < 0 || indexB >= Capacity)
                 return false;
-            }
+            
             if (!CanSwap(indexA, indexB))
-            {
                 return false;
-            }
 
             var temp = _slots[indexA];
             _slots[indexA] = _slots[indexB];
