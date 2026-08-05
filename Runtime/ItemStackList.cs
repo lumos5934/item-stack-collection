@@ -2,11 +2,11 @@ using System.Collections.Generic;
 
 namespace LLib.Inventory
 {
-    public class DynamicInventory<TItem> : InventoryBase<TItem> where TItem : class, IItem
+    public class ItemStackList<TItem> : ItemStackCollection<TItem> where TItem : class, IItem
     {
-        public DynamicInventory()
+        public ItemStackList()
         {
-            _slots = new List<ItemStack<TItem>>();
+            _stacks = new List<ItemStack<TItem>>();
         }
 
         public override int Add(TItem item, int count)
@@ -29,8 +29,8 @@ namespace LLib.Inventory
                     stackCount = item.MaxStackCount;
                 }
 
-                _slots.Add(new ItemStack<TItem>(item, stackCount));
-                RaiseSlotChanged(_slots.Count - 1);
+                _stacks.Add(new ItemStack<TItem>(item, stackCount));
+                RaiseSlotChanged(_stacks.Count - 1);
                 remaining -= stackCount;
             }
 
@@ -49,9 +49,9 @@ namespace LLib.Inventory
             }
 
             var remaining = count;
-            for (var i = _slots.Count - 1; i >= 0 && remaining > 0; i--)
+            for (var i = _stacks.Count - 1; i >= 0 && remaining > 0; i--)
             {
-                var slot = _slots[i];
+                var slot = _stacks[i];
                 if (!slot.CanMerge(item))
                 {
                     continue;
@@ -60,7 +60,7 @@ namespace LLib.Inventory
                 remaining -= slot.RemoveCount(remaining);
                 if (slot.IsEmpty)
                 {
-                    _slots.RemoveAt(i);
+                    _stacks.RemoveAt(i);
                 }
 
                 RaiseSlotChanged(i);
@@ -84,12 +84,12 @@ namespace LLib.Inventory
             {
                 index = 0;
             }
-            if (index > _slots.Count)
+            if (index > _stacks.Count)
             {
-                index = _slots.Count;
+                index = _stacks.Count;
             }
 
-            _slots.Insert(index, stack);
+            _stacks.Insert(index, stack);
             RaiseSlotChanged(index);
         }
 
@@ -100,8 +100,8 @@ namespace LLib.Inventory
         
         public override void Clear()
         {
-            var removedCount = _slots.Count;
-            _slots.Clear();
+            var removedCount = _stacks.Count;
+            _stacks.Clear();
 
             for (var i = removedCount - 1; i >= 0; i--)
             {

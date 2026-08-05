@@ -1,9 +1,8 @@
 {
-  "name": "com.llib.inventory",
+  "name": "com.llib.itemstackcollection",
   "version": "1.0.0",
-  "displayName": "Inventory",
-  "description": "\uae30\ubcf8\uc801\uc778 \uc778\ubca4\ud1a0\ub9ac \uc785\ub2c8\ub2e4.",
-  "unity": "2022.3",
+  "displayName": "Item Stack Collection",
+  "description": "객체와 개수 단위의 스택을 관리하는 컬렉션 모음 입니다.",
   "author": {
     "name": "LUMOS",
     "email": "lumos5934@gmail.com"

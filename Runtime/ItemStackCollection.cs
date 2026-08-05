@@ -3,17 +3,17 @@ using System.Collections.Generic;
 
 namespace LLib.Inventory
 {
-    public abstract class InventoryBase<TItem> where TItem : class, IItem
+    public abstract class ItemStackCollection<TItem> where TItem : class, IItem
     {
-        protected List<ItemStack<TItem>> _slots;
+        protected List<ItemStack<TItem>> _stacks;
 
-        public IReadOnlyList<ItemStack<TItem>> Slots => _slots;
+        public IReadOnlyList<ItemStack<TItem>> Stacks => _stacks;
 
-        public event Action<int> OnSlotChanged;
+        public event Action<int> OnStackChanged;
 
         protected void RaiseSlotChanged(int index)
         {
-            OnSlotChanged?.Invoke(index);
+            OnStackChanged?.Invoke(index);
         }
 
         protected virtual bool CanAdd(TItem item, int count)
@@ -53,9 +53,9 @@ namespace LLib.Inventory
         protected int MergeIntoExistingStacks(TItem item, int count)
         {
             var remaining = count;
-            for (var i = 0; i < _slots.Count && remaining > 0; i++)
+            for (var i = 0; i < _stacks.Count && remaining > 0; i++)
             {
-                var slot = _slots[i];
+                var slot = _stacks[i];
                 if (!slot.CanMerge(item))
                 {
                     continue;

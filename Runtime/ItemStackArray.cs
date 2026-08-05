@@ -2,32 +2,17 @@ using System.Collections.Generic;
 
 namespace LLib.Inventory
 {
-    public class FixedInventory<TItem> : InventoryBase<TItem> where TItem : class, IItem
+    public class ItemStackArray<TItem> : ItemStackCollection<TItem> where TItem : class, IItem
     {
-        public int Capacity { get; private set; }
-
-        public FixedInventory(int slotCount)
+        public ItemStackArray(int capacity)
         {
-            _slots = new List<ItemStack<TItem>>(slotCount);
-            for (var i = 0; i < slotCount; i++)
+            _stacks = new List<ItemStack<TItem>>(capacity);
+            for (var i = 0; i < capacity; i++)
             {
-                _slots.Add(new ItemStack<TItem>(null, 0));
+                _stacks.Add(new ItemStack<TItem>(null, 0));
             }
         }
 
-        public void SetCapacity(int value)
-        {
-            if (value < 0)
-            {
-                value = 0;
-            }
-            if (value > _slots.Count)
-            {
-                value = _slots.Count;
-            }
-
-            Capacity = value;
-        }
 
         public override int Add(TItem item, int count)
         {
@@ -46,9 +31,9 @@ namespace LLib.Inventory
                 return 0;
             }
 
-            for (var i = 0; i < Capacity && remaining > 0; i++)
+            for (var i = 0; i < _stacks.Count && remaining > 0; i++)
             {
-                var slot = _slots[i];
+                var slot = _stacks[i];
                 if (!slot.IsEmpty)
                 {
                     continue;
@@ -80,9 +65,9 @@ namespace LLib.Inventory
             }
 
             var remaining = count;
-            for (var i = 0; i < Capacity && remaining > 0; i++)
+            for (var i = 0; i < _stacks.Count && remaining > 0; i++)
             {
-                var slot = _slots[i];
+                var slot = _stacks[i];
                 if (!slot.CanMerge(item))
                 {
                     continue;
@@ -102,24 +87,24 @@ namespace LLib.Inventory
 
         public override void Clear()
         {
-            for (var i = 0; i < _slots.Count; i++)
+            for (var i = 0; i < _stacks.Count; i++)
             {
-                _slots[i].Clear();
+                _stacks[i].Clear();
                 RaiseSlotChanged(i);
             }
         }
         
         public bool Swap(int indexA, int indexB)
         {
-            if (indexA < 0 || indexA >= Capacity || indexB < 0 || indexB >= Capacity)
+            if (indexA < 0 || indexA >= _stacks.Count || indexB < 0 || indexB >= _stacks.Count)
                 return false;
             
             if (!CanSwap(indexA, indexB))
                 return false;
 
-            var temp = _slots[indexA];
-            _slots[indexA] = _slots[indexB];
-            _slots[indexB] = temp;
+            var temp = _stacks[indexA];
+            _stacks[indexA] = _stacks[indexB];
+            _stacks[indexB] = temp;
 
             RaiseSlotChanged(indexA);
             RaiseSlotChanged(indexB);
