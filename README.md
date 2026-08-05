@@ -1,6 +1,6 @@
-# Inventory System
+# ItemStack Collection
 
-아이템 스택과 그것을 담는 인벤토리를 관리합니다. UI는 포함하지 않으며, 아이템 스택 데이터와 추가/제거/스왑/조회 같은 핵심 로직만 제공합니다. 빈 슬롯을 허용하는 슬롯형(FixedInventory)과 빈 슬롯 없이 항상 압축된 상태를 유지하는 압축형(DynamicInventory)을 상황에 맞게 선택해서 사용할 수 있습니다.
+아이템 스택 데이터와 추가/제거/스왑/조회 같은 핵심 로직만 제공합니다. 빈 슬롯을 허용하는 배열형(ItemStackArray)과 빈 슬롯 없이 항상 압축된 상태를 유지하는 리스트형(ItemStackList)을 상황에 맞게 선택해서 사용할 수 있습니다.
 
 [ Usage ](#usage) <br>
 [ API ](#api) <br>
@@ -37,51 +37,48 @@ public class WeaponItem : IItem
 <br>
 <br>
 
-#### FixedInventory 사용
-슬롯 개수가 고정되고 빈 슬롯이 존재하는 인벤토리입니다. (플레이어 인벤토리, 장비창 등)
+#### ItemStackArray 사용
+슬롯 개수가 고정되고 빈 슬롯이 존재하는 컬렉션입니다. (플레이어 인벤토리, 장비창 등)
 
 ```cs
 
-var inventory = new FixedInventory<WeaponItem>(20);
+var stacks = new ItemStackArray<WeaponItem>(20);
 
-var leftover = inventory.Add(sword, 1);
-inventory.Remove(sword, 1);
-inventory.Swap(0, 3);
-
-// 슬롯 개수 축소 (예: 디버프로 인벤토리 칸 잠금)
-inventory.SetCurCapacity(15);
+var leftover = stacks.Add(sword, 1);
+stacks.Remove(sword, 1);
+stacks.Swap(0, 3);
 
 ```
 
 <br>
 <br>
 
-#### DynamicInventory 사용
-빈 슬롯 없이 항상 압축된 상태를 유지하는 인벤토리입니다. (창고, 우편함 등 정렬만 필요한 경우)
+#### ItemStackList 사용
+빈 슬롯 없이 항상 압축된 상태를 유지하는 컬렉션입니다. (창고, 우편함 등 정렬만 필요한 경우)
 
 ```cs
 
-var inventory = new DynamicInventory<WeaponItem>();
+var stacks = new ItemStackList<WeaponItem>();
 
-inventory.Add(sword, 1);
-inventory.Remove(sword, 1);
+stacks.Add(sword, 1);
+stacks.Remove(sword, 1);
 
 // 특정 위치로 재배치
-inventory.Insert(0, new ItemStack<WeaponItem>(sword, 1));
+stacks.Insert(0, new ItemStack<WeaponItem>(sword, 1));
 
 ```
 
 <br>
 <br>
 
-#### 슬롯 변경 감지
-`OnSlotChanged(index)`로 변경된 슬롯 인덱스를 통지받습니다. 어떤 종류의 변경인지는 알려주지 않으므로, 구독 측에서 `Slots[index]`를 다시 읽어 판단합니다.
+#### 변경 감지
+`OnStackChanged(index)`로 변경된 인덱스를 통지받습니다. 어떤 종류의 변경인지는 알려주지 않으므로, 구독 측에서 `Stacks[index]`를 다시 읽어 판단합니다.
 
 ```cs
 
-inventory.OnSlotChanged += (index) =>
+stacks.OnStackChanged += (index) =>
 {
-    var slot = inventory.Slots[index];
+    var slot = stacks.Stacks[index];
     if (slot.IsEmpty)
     {
         // 슬롯 비워짐
@@ -94,11 +91,11 @@ inventory.OnSlotChanged += (index) =>
 <br>
 
 #### 프로젝트별 규칙 추가
-`CanAdd`, `CanRemove`(base), `CanSwap`(Fixed), `CanInsert`(Dynamic) 훅을 override해 무게 제한, 타입 제한, 슬롯 잠금 같은 규칙을 얹을 수 있습니다.
+`CanAdd`, `CanRemove`(base), `CanSwap`(ItemStackArray), `CanInsert`(ItemStackList) 훅을 override해 무게 제한, 타입 제한, 슬롯 잠금 같은 규칙을 얹을 수 있습니다.
 
 ```cs
 
-public class PlayerInventory : FixedInventory<WeaponItem>
+public class PlayerInventory : ItemStackArray<WeaponItem>
 {
     public PlayerInventory(int capacity) : base(capacity)
     {
@@ -142,29 +139,28 @@ public class PlayerInventory : FixedInventory<WeaponItem>
 
 <br>
 
-#### InventoryBase\<TItem\>
-**`Slots`** : 현재 슬롯 목록입니다. Find류 메서드 없이 이 목록을 직접 순회해서 사용합니다.<br>
-**`OnSlotChanged`** : 슬롯 인덱스가 변경될 때 호출되는 이벤트입니다.<br>
+#### ItemStackCollection\<TItem\>
+**`Stacks`** : 현재 스택 목록입니다. Find류 메서드 없이 이 목록을 직접 순회해서 사용합니다.<br>
+**`OnStackChanged`** : 인덱스가 변경될 때 호출되는 이벤트입니다.<br>
 **`Add(item, count)`** : 아이템을 추가합니다. 처리하지 못하고 남은 수량을 반환합니다.<br>
 **`Add(stack)`** : ItemStack을 그대로 추가합니다.<br>
 **`Remove(item, count)`** : 아이템을 제거합니다. 제거하지 못하고 남은 수량을 반환합니다.<br>
 **`Remove(stack)`** : ItemStack을 그대로 제거합니다.<br>
+**`Clear()`** : 전체를 비웁니다. 파생 클래스마다 구현 방식이 다릅니다.<br>
 
 <br>
 
-#### FixedInventory\<TItem\> : InventoryBase\<TItem\>
-**`Capacity`** : 배열의 물리적 크기입니다. 불변입니다.<br>
-**`MaxCapacity`** : Capacity 이하로 조정 가능한 사용 가능 상한입니다.<br>
-**`CurCapacity`** : MaxCapacity 이하로 조정 가능한 실사용 상한입니다. Add/Swap은 이 값을 기준으로 동작합니다.<br>
-**`SetMaxCapacity(value)`** : MaxCapacity를 설정합니다. CurCapacity가 이보다 크면 함께 낮춥니다.<br>
-**`SetCurCapacity(value)`** : CurCapacity를 설정합니다.<br>
+#### ItemStackArray\<TItem\> : ItemStackCollection\<TItem\>
+크기는 생성자에서 고정되며 이후 변경할 수 없습니다. 현재 크기는 `Stacks.Count`로 확인합니다.<br>
 **`Swap(indexA, indexB)`** : 두 슬롯의 내용을 1:1로 교환합니다.<br>
 
 <br>
 
-#### DynamicInventory\<TItem\> : InventoryBase\<TItem\>
+#### ItemStackList\<TItem\> : ItemStackCollection\<TItem\>
+상한 없이 계속 늘어납니다.<br>
 **`Insert(index, stack)`** : 리스트 상 위치를 재배치합니다. 음수면 맨 앞, 최대 초과면 맨 뒤, 중간이면 밀어서 삽입합니다.<br>
 
 <br>
 <br>
 <br>
+
