@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace LLib.Inventory
+namespace LLib
 {
     public class ItemStackArray<TItem> : ItemStackCollection<TItem> where TItem : class, IItem
     {

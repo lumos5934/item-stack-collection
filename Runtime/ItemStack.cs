@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LLib.Inventory
+namespace LLib
 {
     [Serializable]
     public class ItemStack<TItem> where TItem : class, IItem

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace LLib.Inventory
+namespace LLib
 {
     public abstract class ItemStackCollection<TItem> where TItem : class, IItem
     {
