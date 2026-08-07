@@ -1,8 +1,8 @@
 {
-  "name": "com.llib.itemstackcollection",
+  "name": "com.llib.itemstackcontainer",
   "version": "1.0.0",
-  "displayName": "Item Stack Collection",
-  "description": "객체와 개수 단위의 스택을 관리하는 컬렉션 모음 입니다.",
+  "displayName": "Item Stack Container",
+  "description": "아이템 객체와 개수 단위를 스택으로 관리하는 컨테이너 입니다.",
   "author": {
     "name": "LUMOS",
     "email": "lumos5934@gmail.com"
